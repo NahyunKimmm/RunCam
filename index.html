@@ -4,8 +4,49 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Scanimation Running Cam</title>
+    
     <style>
-        /* --- 1. Basic Styles --- */
+        /* --- 1. Font Face Definition (폰트 파일 연결) --- */
+        /* 파일명이 정확히 일치해야 합니다. */
+        
+        @font-face {
+            font-family: 'Stack Sans Notch';
+            src: url('StackSansNotch-ExtraLight.ttf') format('truetype');
+            font-weight: 200;
+            font-style: normal;
+        }
+        @font-face {
+            font-family: 'Stack Sans Notch';
+            src: url('StackSansNotch-Light.ttf') format('truetype');
+            font-weight: 300;
+            font-style: normal;
+        }
+        @font-face {
+            font-family: 'Stack Sans Notch';
+            src: url('StackSansNotch-Regular.ttf') format('truetype');
+            font-weight: 400; /* 기본 굵기 */
+            font-style: normal;
+        }
+        @font-face {
+            font-family: 'Stack Sans Notch';
+            src: url('StackSansNotch-Medium.ttf') format('truetype');
+            font-weight: 500;
+            font-style: normal;
+        }
+        @font-face {
+            font-family: 'Stack Sans Notch';
+            src: url('StackSansNotch-SemiBold.ttf') format('truetype');
+            font-weight: 600;
+            font-style: normal;
+        }
+        @font-face {
+            font-family: 'Stack Sans Notch';
+            src: url('StackSansNotch-Bold.ttf') format('truetype');
+            font-weight: 700;
+            font-style: normal;
+        }
+
+        /* --- 2. Basic Styles --- */
         body {
             margin: 0;
             padding: 0;
@@ -15,7 +56,8 @@
             align-items: center;
             justify-content: center;
             height: 100vh;
-            height: 100dvh; /* Mobile browser address bar fix */
+            height: 100dvh; 
+            /* ✅ 커스텀 폰트 적용 */
             font-family: "Stack Sans Notch", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             overflow: hidden;
             touch-action: none;
@@ -62,28 +104,25 @@
             align-items: center;
             z-index: 20;
             pointer-events: none; 
-            background: transparent; /* 그라디언트 제거 */
+            background: transparent; 
         }
 
         .app-logo-img {
-            height: 120px; /* Responsive height start */
+            height: 120px; 
             width: auto;
-            max-width: 60%; /* Prevent overflow on small screens */
+            max-width: 60%; 
             object-fit: contain;
-            /* Shadow removed as requested */
-            /* filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5)); */
             transition: height 0.3s ease;
         }
 
-        /* --- 2. Responsive Controls --- */
+        /* --- 3. Responsive Controls --- */
         .controls-wrapper {
             position: fixed;
             bottom: 0;
             left: 0;
             width: 100%;
-            /* Remove max-width to allow gradient to span full width */
             padding-bottom: max(30px, env(safe-area-inset-bottom));
-            padding-top: 40px; /* More space for gradient fade */
+            padding-top: 40px; 
             background: linear-gradient(to top, rgba(0,0,0,0.95) 20%, rgba(0,0,0,0.8) 60%, transparent 100%);
             display: flex;
             flex-direction: column;
@@ -93,7 +132,6 @@
             transition: padding 0.3s ease;
         }
 
-        /* Inner container to keep controls from getting too wide on desktop */
         .controls-inner {
             width: 100%;
             max-width: 500px;
@@ -118,10 +156,9 @@
             background: transparent;
             border: none;
             color: #aaa;
-            /* Responsive padding and font size */
             padding: 8px clamp(16px, 4vw, 24px);
             font-size: clamp(12px, 3.5vw, 14px);
-            font-weight: 600;
+            font-weight: 600; /* SemiBold 느낌 */
             cursor: pointer;
             border-radius: 24px;
             transition: all 0.2s;
@@ -138,7 +175,7 @@
         .value-display {
             color: white;
             font-size: 13px;
-            font-weight: 500;
+            font-weight: 500; /* Medium */
             opacity: 0.9;
             margin-bottom: -5px;
             text-shadow: 0 1px 2px rgba(0,0,0,0.8);
@@ -147,7 +184,7 @@
 
         /* Slider */
         .slider-container {
-            width: 85%; /* Slightly wider */
+            width: 85%; 
             display: flex;
             align-items: center;
             gap: 12px;
@@ -157,11 +194,10 @@
             -webkit-appearance: none;
             width: 100%;
             background: transparent;
-            height: 30px; /* Increase touch target area */
+            height: 30px; 
         }
         input[type=range]:focus { outline: none; }
         
-        /* Slider Track */
         input[type=range]::-webkit-slider-runnable-track {
             width: 100%;
             height: 4px;
@@ -171,7 +207,6 @@
             transition: background 0.2s;
         }
 
-        /* Slider Thumb */
         input[type=range]::-webkit-slider-thumb {
             height: 24px;
             width: 24px;
@@ -179,7 +214,7 @@
             background: #ffffff;
             cursor: pointer;
             -webkit-appearance: none;
-            margin-top: -10px; /* Center thumb on track */
+            margin-top: -10px; 
             box-shadow: 0 2px 6px rgba(0,0,0,0.4);
             transition: transform 0.1s;
         }
@@ -198,7 +233,7 @@
             cursor: pointer;
             transition: transform 0.1s, background-color 0.2s;
             margin-top: 8px;
-            flex-shrink: 0; /* Prevent shrinking on small screens */
+            flex-shrink: 0; 
         }
         #shutter-btn:active {
             transform: scale(0.92);
@@ -208,7 +243,7 @@
         /* Gallery */
         #gallery {
             position: fixed;
-            bottom: clamp(140px, 25vh, 160px); /* Dynamic position based on height */
+            bottom: clamp(140px, 25vh, 160px); 
             right: 20px;
             display: flex;
             flex-direction: column-reverse;
@@ -227,7 +262,7 @@
             background-color: #333;
         }
 
-        /* --- 3. Responsive Modal --- */
+        /* --- 4. Responsive Modal --- */
         .modal-overlay {
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
@@ -238,7 +273,7 @@
             align-items: center;
             justify-content: center;
             flex-direction: column;
-            padding: 20px; /* Safety padding */
+            padding: 20px; 
             box-sizing: border-box;
         }
         .modal-overlay.active { display: flex; }
@@ -246,14 +281,14 @@
         .modal-content {
             background: #1a1a1a;
             width: 100%;
-            max-width: 380px; /* Optimal reading width */
+            max-width: 380px; 
             border-radius: 24px;
             overflow: hidden;
             box-shadow: 0 20px 40px rgba(0,0,0,0.6);
             border: 1px solid rgba(255,255,255,0.1);
             display: flex;
             flex-direction: column;
-            max-height: 85vh; /* Leave some space */
+            max-height: 85vh; 
             animation: modalSlideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
         }
 
@@ -268,11 +303,11 @@
             display: flex;
             justify-content: center;
             padding: 20px 0;
-            flex-shrink: 0; /* Don't shrink the image area too much */
+            flex-shrink: 0; 
         }
         .modal-image {
             max-width: 90%;
-            max-height: 35vh; /* Limit height so text is visible */
+            max-height: 35vh; 
             border-radius: 4px;
             border: 1px solid #333;
             object-fit: contain;
@@ -281,7 +316,7 @@
         .modal-body {
             padding: 20px 24px;
             color: #eee;
-            overflow-y: auto; /* Scroll if text is long */
+            overflow-y: auto; 
             -webkit-overflow-scrolling: touch;
         }
 
@@ -292,7 +327,7 @@
             border: none;
             color: #FCFCFC; 
             font-size: 16px;
-            font-weight: 700;
+            font-weight: 700; /* Bold */
             border-radius: 16px;
             cursor: pointer;
             display: flex;
@@ -318,7 +353,7 @@
             border: 1px solid rgba(255,255,255,0.1);
             color: #ddd;
             font-size: 14px;
-            font-weight: 500;
+            font-weight: 500; /* Medium */
             border-radius: 14px;
             cursor: pointer;
             text-align: center;
@@ -352,7 +387,7 @@
             .app-logo-img { height: 60px; }
             
             .controls-wrapper {
-                flex-direction: row; /* Side by side controls */
+                flex-direction: row; 
                 justify-content: center;
                 align-items: flex-end;
                 padding-bottom: 10px;
@@ -396,7 +431,6 @@
 
     <!-- Top Logo Section -->
     <div class="top-logo-container">
-        <!-- Replaced src with new symbol logo and removed shadow from CSS -->
         <img src="심볼.png" alt="Runner Station Logo" class="app-logo-img" onerror="this.style.display='none'; console.log('Logo not found. Ensure 심볼.png is in the same folder.');">
     </div>
 
@@ -457,7 +491,7 @@
 
     <script>
         // --- Gemini API Setup ---
-        const apiKey = "AIzaSyChiLTrxAZM1D4LbwJTnxGZ7e02pkY62_c"; 
+        const apiKey = ""; // ⚠️ 여기에 다시 API 키를 꼭 넣어주세요!
 
         // --- Variables ---
         const videoView = document.getElementById('camera-view');
