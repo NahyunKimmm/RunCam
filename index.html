@@ -1,0 +1,703 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Scanimation Running Cam</title>
+    <style>
+        /* --- 1. Basic Styles --- */
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #000;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            height: 100dvh; /* Mobile browser address bar fix */
+            font-family: "Stack Sans Notch", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            overflow: hidden;
+            touch-action: none;
+            color: white;
+        }
+
+        #camera-container {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+            background-color: #111;
+        }
+
+        #camera-view {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        #video-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 5;
+        }
+
+        /* --- Top Logo Styles --- */
+        .top-logo-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            padding-top: max(20px, env(safe-area-inset-top)); 
+            padding-bottom: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 20;
+            pointer-events: none; 
+            background: transparent; /* 그라디언트 제거 */
+        }
+
+        .app-logo-img {
+            height: 120px; /* Responsive height start */
+            width: auto;
+            max-width: 60%; /* Prevent overflow on small screens */
+            object-fit: contain;
+            /* Shadow removed as requested */
+            /* filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5)); */
+            transition: height 0.3s ease;
+        }
+
+        /* --- 2. Responsive Controls --- */
+        .controls-wrapper {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            /* Remove max-width to allow gradient to span full width */
+            padding-bottom: max(30px, env(safe-area-inset-bottom));
+            padding-top: 40px; /* More space for gradient fade */
+            background: linear-gradient(to top, rgba(0,0,0,0.95) 20%, rgba(0,0,0,0.8) 60%, transparent 100%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
+            z-index: 10;
+            transition: padding 0.3s ease;
+        }
+
+        /* Inner container to keep controls from getting too wide on desktop */
+        .controls-inner {
+            width: 100%;
+            max-width: 500px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+        }
+
+        /* Toggle Switch */
+        .toggle-container {
+            display: flex;
+            background-color: rgba(0, 0, 0, 0.6);
+            border-radius: 30px;
+            padding: 4px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.15);
+            margin-bottom: 5px;
+        }
+
+        .toggle-btn {
+            background: transparent;
+            border: none;
+            color: #aaa;
+            /* Responsive padding and font size */
+            padding: 8px clamp(16px, 4vw, 24px);
+            font-size: clamp(12px, 3.5vw, 14px);
+            font-weight: 600;
+            cursor: pointer;
+            border-radius: 24px;
+            transition: all 0.2s;
+            font-family: inherit; 
+            white-space: nowrap;
+        }
+
+        .toggle-btn.active {
+            background-color: #fff;
+            color: #000;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
+
+        .value-display {
+            color: white;
+            font-size: 13px;
+            font-weight: 500;
+            opacity: 0.9;
+            margin-bottom: -5px;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.8);
+            letter-spacing: 0.5px;
+        }
+
+        /* Slider */
+        .slider-container {
+            width: 85%; /* Slightly wider */
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        input[type=range] {
+            -webkit-appearance: none;
+            width: 100%;
+            background: transparent;
+            height: 30px; /* Increase touch target area */
+        }
+        input[type=range]:focus { outline: none; }
+        
+        /* Slider Track */
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 4px;
+            cursor: pointer;
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 2px;
+            transition: background 0.2s;
+        }
+
+        /* Slider Thumb */
+        input[type=range]::-webkit-slider-thumb {
+            height: 24px;
+            width: 24px;
+            border-radius: 50%;
+            background: #ffffff;
+            cursor: pointer;
+            -webkit-appearance: none;
+            margin-top: -10px; /* Center thumb on track */
+            box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+            transition: transform 0.1s;
+        }
+        input[type=range]:active::-webkit-slider-thumb {
+            transform: scale(1.2);
+        }
+
+        /* Shutter Button */
+        #shutter-btn {
+            width: clamp(64px, 18vw, 76px);
+            height: clamp(64px, 18vw, 76px);
+            border-radius: 50%;
+            background-color: white;
+            border: 4px solid rgba(255, 255, 255, 0.4);
+            background-clip: padding-box;
+            cursor: pointer;
+            transition: transform 0.1s, background-color 0.2s;
+            margin-top: 8px;
+            flex-shrink: 0; /* Prevent shrinking on small screens */
+        }
+        #shutter-btn:active {
+            transform: scale(0.92);
+            background-color: #e0e0e0;
+        }
+
+        /* Gallery */
+        #gallery {
+            position: fixed;
+            bottom: clamp(140px, 25vh, 160px); /* Dynamic position based on height */
+            right: 20px;
+            display: flex;
+            flex-direction: column-reverse;
+            gap: 10px;
+            z-index: 20;
+            pointer-events: none; 
+        }
+        #gallery a { pointer-events: auto; }
+        .photo-item {
+            width: clamp(48px, 12vw, 60px);
+            height: clamp(48px, 12vw, 60px);
+            border: 2px solid rgba(255,255,255,1.0);
+            border-radius: 8px;
+            object-fit: cover;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.5);
+            background-color: #333;
+        }
+
+        /* --- 3. Responsive Modal --- */
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.85);
+            backdrop-filter: blur(8px);
+            z-index: 100;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            padding: 20px; /* Safety padding */
+            box-sizing: border-box;
+        }
+        .modal-overlay.active { display: flex; }
+
+        .modal-content {
+            background: #1a1a1a;
+            width: 100%;
+            max-width: 380px; /* Optimal reading width */
+            border-radius: 24px;
+            overflow: hidden;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.6);
+            border: 1px solid rgba(255,255,255,0.1);
+            display: flex;
+            flex-direction: column;
+            max-height: 85vh; /* Leave some space */
+            animation: modalSlideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        @keyframes modalSlideUp {
+            from { transform: translateY(20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        .modal-image-container {
+            width: 100%;
+            background: #000;
+            display: flex;
+            justify-content: center;
+            padding: 20px 0;
+            flex-shrink: 0; /* Don't shrink the image area too much */
+        }
+        .modal-image {
+            max-width: 90%;
+            max-height: 35vh; /* Limit height so text is visible */
+            border-radius: 4px;
+            border: 1px solid #333;
+            object-fit: contain;
+        }
+
+        .modal-body {
+            padding: 20px 24px;
+            color: #eee;
+            overflow-y: auto; /* Scroll if text is long */
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .ai-btn {
+            width: 100%;
+            padding: 16px;
+            background: #FF4644; 
+            border: none;
+            color: #FCFCFC; 
+            font-size: 16px;
+            font-weight: 700;
+            border-radius: 16px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 12px;
+            transition: transform 0.1s, filter 0.2s;
+            font-family: inherit;
+            box-shadow: 0 4px 12px rgba(255, 70, 68, 0.3);
+        }
+        .ai-btn:active { transform: scale(0.98); filter: brightness(0.9); }
+        
+        .btn-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        .secondary-btn {
+            flex: 1;
+            padding: 14px;
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.1);
+            color: #ddd;
+            font-size: 14px;
+            font-weight: 500;
+            border-radius: 14px;
+            cursor: pointer;
+            text-align: center;
+            font-family: inherit;
+            transition: background 0.2s;
+        }
+        .secondary-btn:hover { background: rgba(255,255,255,0.15); }
+        .secondary-btn:active { background: rgba(255,255,255,0.2); }
+
+        .ai-result-box {
+            background: rgba(255,255,255,0.05);
+            border-radius: 16px;
+            padding: 16px;
+            margin-top: 16px;
+            font-size: 15px;
+            line-height: 1.6;
+            display: none;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        .ai-result-title {
+            font-weight: bold;
+            font-size: 18px;
+            color: #fff;
+            margin-bottom: 8px;
+            display: block;
+        }
+
+        /* --- Landscape Mode Adjustments --- */
+        @media (max-height: 500px) and (orientation: landscape) {
+            .top-logo-container { padding-top: 10px; padding-bottom: 10px; }
+            .app-logo-img { height: 60px; }
+            
+            .controls-wrapper {
+                flex-direction: row; /* Side by side controls */
+                justify-content: center;
+                align-items: flex-end;
+                padding-bottom: 10px;
+                padding-top: 60px;
+                gap: 30px;
+            }
+            
+            .controls-inner {
+                flex-direction: row;
+                width: auto;
+                gap: 20px;
+                margin-bottom: 10px;
+            }
+
+            .slider-container { width: 200px; }
+            
+            #gallery { bottom: 20px; right: 20px; flex-direction: column-reverse; }
+        }
+
+        .flash { animation: flashAnim 0.15s ease-out; }
+        @keyframes flashAnim {
+            0% { opacity: 1; }
+            50% { opacity: 0; background-color: white; }
+            100% { opacity: 1; }
+        }
+        
+        .loader {
+            border: 3px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top: 3px solid #fff;
+            width: 20px;
+            height: 20px;
+            animation: spin 1s linear infinite;
+            display: none;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+    </style>
+</head>
+<body>
+
+    <!-- Top Logo Section -->
+    <div class="top-logo-container">
+        <!-- Replaced src with new symbol logo and removed shadow from CSS -->
+        <img src="심볼.png" alt="Runner Station Logo" class="app-logo-img" onerror="this.style.display='none'; console.log('Logo not found. Ensure 심볼.png is in the same folder.');">
+    </div>
+
+    <div id="camera-container">
+        <video id="camera-view" autoplay playsinline></video>
+        <div id="video-overlay"></div>
+    </div>
+
+    <canvas id="camera-sensor" style="display:none;"></canvas>
+    <div id="gallery"></div>
+
+    <!-- Controls Wrapper -->
+    <div class="controls-wrapper">
+        <div class="controls-inner">
+            <!-- Value Display -->
+            <div class="value-display" id="value-display">Gap: 20px</div>
+
+            <!-- Toggle Container -->
+            <div class="toggle-container">
+                <button class="toggle-btn active" id="btn-gap" onclick="setMode('gap')">Gap</button>
+                <button class="toggle-btn" id="btn-thickness" onclick="setMode('thickness')">Thickness</button>
+            </div>
+
+            <!-- Slider Container -->
+            <div class="slider-container">
+                <input type="range" id="control-slider">
+            </div>
+        </div>
+        
+        <!-- Shutter Button (Outside inner to stay big) -->
+        <button id="shutter-btn"></button>
+    </div>
+
+    <!-- AI Result Modal -->
+    <div class="modal-overlay" id="result-modal">
+        <div class="modal-content">
+            <div class="modal-image-container">
+                <img id="captured-preview" class="modal-image" src="">
+            </div>
+            <div class="modal-body">
+                <button class="ai-btn" id="ai-analyze-btn" onclick="analyzeWithGemini()">
+                    <span class="loader" id="ai-loader"></span>
+                    <span id="ai-btn-text">Analyze Scanimation</span>
+                </button>
+                
+                <div class="ai-result-box" id="ai-result">
+                    <span class="ai-result-title" id="ai-title"></span>
+                    <p id="ai-desc"></p>
+                </div>
+
+                <div class="btn-group">
+                    <button class="secondary-btn" onclick="downloadCurrentPhoto()">Save</button>
+                    <button class="secondary-btn" onclick="closeModal()">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- Gemini API Setup ---
+        const apiKey = "AIzaSyChiLTrxAZM1D4LbwJTnxGZ7e02pkY62_c"; 
+
+        // --- Variables ---
+        const videoView = document.getElementById('camera-view');
+        const overlay = document.getElementById('video-overlay');
+        const slider = document.getElementById('control-slider');
+        const btnGap = document.getElementById('btn-gap');
+        const btnThickness = document.getElementById('btn-thickness');
+        const valueDisplay = document.getElementById('value-display');
+        
+        // --- Modal Variables ---
+        const modal = document.getElementById('result-modal');
+        const previewImg = document.getElementById('captured-preview');
+        const aiResultBox = document.getElementById('ai-result');
+        const aiTitle = document.getElementById('ai-title');
+        const aiDesc = document.getElementById('ai-desc');
+        const aiLoader = document.getElementById('ai-loader');
+        const aiBtnText = document.getElementById('ai-btn-text');
+        const aiBtn = document.getElementById('ai-analyze-btn');
+
+        let currentImageData = null;
+
+        // --- State ---
+        let state = {
+            gap: 20,
+            thickness: 2,
+            mode: 'gap'
+        };
+
+        const config = {
+            gap: { min: 0, max: 100, step: 1, label: "Gap" },
+            thickness: { min: 1, max: 50, step: 1, label: "Thickness" }
+        };
+
+        function setMode(mode) {
+            state.mode = mode;
+            if(mode === 'gap') {
+                btnGap.classList.add('active');
+                btnThickness.classList.remove('active');
+            } else {
+                btnGap.classList.remove('active');
+                btnThickness.classList.add('active');
+            }
+            slider.min = config[mode].min;
+            slider.max = config[mode].max;
+            slider.step = config[mode].step;
+            slider.value = state[mode];
+            updateValueDisplay();
+        }
+
+        function updateValueDisplay() {
+            const currentLabel = config[state.mode].label;
+            const currentValue = state[state.mode];
+            valueDisplay.innerText = `${currentLabel}: ${currentValue}px`;
+        }
+
+        // --- Overlay Rendering ---
+        function renderOverlay() {
+            const gap = parseInt(state.gap);
+            const thick = parseInt(state.thickness);
+            const totalSize = gap + thick;
+            
+            overlay.style.background = `repeating-linear-gradient(
+                to bottom,
+                transparent 0px,
+                transparent ${gap}px,
+                rgba(255, 255, 255, 1.0) ${gap}px,
+                rgba(255, 255, 255, 1.0) ${totalSize}px
+            )`;
+            updateValueDisplay();
+        }
+
+        slider.addEventListener('input', function(e) {
+            const val = parseInt(e.target.value);
+            state[state.mode] = val;
+            renderOverlay();
+        });
+
+        setMode('gap');
+        renderOverlay();
+
+        // --- Camera Setup ---
+        const constraints = { 
+            video: { facingMode: "environment", width: { ideal: 1920 }, height: { ideal: 1080 } }, 
+            audio: false 
+        };
+
+        async function startCamera() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia(constraints);
+                videoView.srcObject = stream;
+            } catch (error) {
+                console.log("Camera permission error:", error);
+            }
+        }
+
+        // --- Capture ---
+        document.getElementById('shutter-btn').onclick = function() {
+            const sensor = document.getElementById('camera-sensor');
+            const ctx = sensor.getContext('2d');
+
+            sensor.width = videoView.videoWidth;
+            sensor.height = videoView.videoHeight;
+            ctx.drawImage(videoView, 0, 0);
+
+            const scaleFactor = sensor.width / videoView.clientWidth;
+            const gap = state.gap * scaleFactor;
+            const thick = state.thickness * scaleFactor;
+            const total = gap + thick;
+
+            // Draw Stripes
+            ctx.fillStyle = "rgba(255, 255, 255, 1.0)";
+            for (let y = gap; y < sensor.height; y += total) {
+                ctx.fillRect(0, y, sensor.width, thick);
+            }
+
+            currentImageData = sensor.toDataURL("image/jpeg", 0.9);
+            openModal(currentImageData);
+
+            document.body.classList.add('flash');
+            setTimeout(() => document.body.classList.remove('flash'), 200);
+        };
+
+        // --- Modal Functions ---
+        function openModal(imageSrc) {
+            previewImg.src = imageSrc;
+            modal.classList.add('active');
+            aiResultBox.style.display = 'none';
+            aiBtn.disabled = false;
+            aiBtnText.innerText = "Analyze Scanimation";
+            aiLoader.style.display = 'none';
+        }
+
+        function closeModal() {
+            modal.classList.remove('active');
+        }
+
+        function downloadCurrentPhoto() {
+            if (!currentImageData) return;
+            const link = document.createElement('a');
+            link.href = currentImageData;
+            link.download = `scanimation_run_${Date.now()}.jpg`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            
+            const img = document.createElement('img');
+            img.src = currentImageData;
+            img.classList.add('photo-item');
+            document.getElementById('gallery').prepend(img);
+            
+            closeModal();
+        }
+
+        // --- ✨ Gemini AI Analysis ---
+        async function analyzeWithGemini() {
+            if (!currentImageData) return;
+
+            aiBtn.disabled = true;
+            aiLoader.style.display = 'inline-block';
+            aiBtnText.innerText = "Analyzing...";
+            
+            try {
+                const base64Image = currentImageData.split(',')[1];
+
+                const promptText = `
+                    You are an AI docent for the 'Scanimation Running Spot' project.
+                    The goal is to help runners discover scanimation spots on the road where different figures with unique running forms and gestures appear to move through the barrier grid (stripes) on their phone screen, conveying the message that "diverse urban figures are running together."
+
+                    [Analysis Phase]
+                    1. Check if there is a visible 'human figure', 'running form', or 'specific gesture' behind the stripes intended as scanimation.
+                    2. If NO scanimation subject or pattern is detected at all, output ONLY the following sentence and stop:
+                       "Uh oh, no animation detected!"
+
+                    [Feedback Guide (If subject is detected)]
+                    Provide feedback in ENGLISH incorporating these three values:
+                    1. **Diversity**: Describe the unique running form or gesture detected, reminding the user that this is one of many neighbors in the city.
+                    2. **Solidarity**: Convey the message "We are not running alone, but together."
+                    3. **Connectivity**: Emphasize that this artistic discovery seamlessly connects the daily streetscape with the act of running.
+
+                    [Output Format]
+                    Title: (A creative, energetic title reflecting the figure's characteristics)
+                    Analysis: (A warm, motivating docent explanation of 2-3 sentences reflecting the guide above)
+                `;
+
+                const response = await fetch(
+                    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`,
+                    {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            contents: [{
+                                parts: [
+                                    { text: promptText },
+                                    { inlineData: { mimeType: "image/jpeg", data: base64Image } }
+                                ]
+                            }]
+                        })
+                    }
+                );
+
+                const data = await response.json();
+                
+                if (data.candidates && data.candidates[0].content) {
+                    const text = data.candidates[0].content.parts[0].text.trim();
+                    
+                    if (text.includes("Uh oh, no animation detected")) {
+                        aiTitle.innerText = "Analysis Failed";
+                        aiDesc.innerText = "Uh oh, no animation detected!";
+                    } else {
+                        const lines = text.split('\n').filter(line => line.trim() !== '');
+                        
+                        let title = "Scanimation Discovered!";
+                        let desc = text;
+
+                        if (lines.length >= 2) {
+                            title = lines[0].replace(/Title:/i, '').replace(/\*\*/g, '').replace(/\"/g, '').trim();
+                            desc = lines.slice(1).join(' ').replace(/Analysis:/i, '').replace(/\*\*/g, '').trim();
+                        }
+
+                        aiTitle.innerText = title;
+                        aiDesc.innerText = desc;
+                    }
+                    
+                    aiResultBox.style.display = 'block';
+                    aiBtnText.innerText = "Analysis Complete";
+                } else {
+                    throw new Error("No response");
+                }
+
+            } catch (error) {
+                console.error(error);
+                aiBtnText.innerText = "Failed (Try Again)";
+                aiBtn.disabled = false;
+                alert("An error occurred. Please try again later.");
+            } finally {
+                aiLoader.style.display = 'none';
+            }
+        }
+
+        window.addEventListener("load", startCamera);
+    </script>
+</body>
+</html>
