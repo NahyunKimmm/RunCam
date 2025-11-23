@@ -673,7 +673,10 @@
                     }
                 );
 
-                
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error?.message || `HTTP Error: ${response.status}`);
+                }
 
                 const data = await response.json();
                 
@@ -681,6 +684,7 @@
                     const text = data.candidates[0].content.parts[0].text.trim();
                     
                     if (text.includes("Uh oh, no animation detected")) {
+                        aiTitle.innerText = "Analysis Failed";
                         aiDesc.innerText = "Uh oh, no animation detected!";
                     } else {
                         const lines = text.split('\n').filter(line => line.trim() !== '');
@@ -688,10 +692,11 @@
                         let title = "Scanimation Discovered!";
                         let desc = text;
 
-                        if (lines.length >= 2) {
-                            title = lines[0].replace(/Title:/i, '').replace(/\*\*/g, '').replace(/\"/g, '').trim();
-                            desc = lines.slice(1).join(' ').replace(/Analysis:/i, '').replace(/\*\*/g, '').trim();
-                        }
+                        const titleMatch = text.match(/Title:\s*(.*)/i);
+                        const analysisMatch = text.match(/Analysis:\s*([\s\S]*)/i);
+
+                        if (titleMatch) title = titleMatch[1].replace(/\*\*/g, '').trim();
+                        if (analysisMatch) desc = analysisMatch[1].replace(/\*\*/g, '').trim();
 
                         aiTitle.innerText = title;
                         aiDesc.innerText = desc;
@@ -707,7 +712,7 @@
                 console.error(error);
                 aiBtnText.innerText = "Failed (Try Again)";
                 aiBtn.disabled = false;
-                alert("An error occurred. Please try again later.");
+                alert("AI Error: " + error.message);
             } finally {
                 aiLoader.style.display = 'none';
             }
