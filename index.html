@@ -483,4 +483,244 @@
 
     <script>
         // --- Gemini API Setup ---
-  	const apiKey = "AIzaSyChiLTrxAZM1D4LbwJTnxGZ7e02pkY62_c"; // ⚠️ 여기에 다시 API 키를 꼭 넣어주세요!        // --- Variables ---        const videoView = document.getElementById('camera-view');        const overlay = document.getElementById('video-overlay');        const slider = document.getElementById('control-slider');        const btnGap = document.getElementById('btn-gap');        const btnThickness = document.getElementById('btn-thickness');        const valueDisplay = document.getElementById('value-display');        // --- Modal Variables ---        const modal = document.getElementById('result-modal');        const previewImg = document.getElementById('captured-preview');        const aiResultBox = document.getElementById('ai-result');        const aiTitle = document.getElementById('ai-title');        const aiDesc = document.getElementById('ai-desc');        const aiLoader = document.getElementById('ai-loader');        const aiBtnText = document.getElementById('ai-btn-text');        const aiBtn = document.getElementById('ai-analyze-btn');        let currentImageData = null;        // --- State ---        let state = {            gap: 20,            thickness: 2,            mode: 'gap'        };        const config = {            gap: { min: 0, max: 100, step: 1, label: "Gap" },            thickness: { min: 1, max: 50, step: 1, label: "Thickness" }        };        function setMode(mode) {            state.mode = mode;            if(mode === 'gap') {                btnGap.classList.add('active');                btnThickness.classList.remove('active');            } else {                btnGap.classList.remove('active');                btnThickness.classList.add('active');            }            slider.min = config[mode].min;            slider.max = config[mode].max;            slider.step = config[mode].step;            slider.value = state[mode];            updateValueDisplay();        }        function updateValueDisplay() {            const currentLabel = config[state.mode].label;            const currentValue = state[state.mode];            valueDisplay.innerText = `${currentLabel}: ${currentValue}px`;        }        // --- Overlay Rendering ---        function renderOverlay() {            const gap = parseInt(state.gap);            const thick = parseInt(state.thickness);            const totalSize = gap + thick;            overlay.style.background = `repeating-linear-gradient(                to bottom,                transparent 0px,                transparent ${gap}px,                rgba(255, 255, 255, 1.0) ${gap}px,                rgba(255, 255, 255, 1.0) ${totalSize}px            )`;            updateValueDisplay();        }        slider.addEventListener('input', function(e) {            const val = parseInt(e.target.value);            state[state.mode] = val;            renderOverlay();        });        setMode('gap');        renderOverlay();        // --- Camera Setup ---        const constraints = {             video: { facingMode: "environment", width: { ideal: 1920 }, height: { ideal: 1080 } },             audio: false         };        async function startCamera() {            try {                const stream = await navigator.mediaDevices.getUserMedia(constraints);                videoView.srcObject = stream;            } catch (error) {                console.log("Camera permission error:", error);            }        }        // --- Capture ---        document.getElementById('shutter-btn').onclick = function() {            const sensor = document.getElementById('camera-sensor');            const ctx = sensor.getContext('2d');            sensor.width = videoView.videoWidth;            sensor.height = videoView.videoHeight;            ctx.drawImage(videoView, 0, 0);            const scaleFactor = sensor.width / videoView.clientWidth;            const gap = state.gap * scaleFactor;            const thick = state.thickness * scaleFactor;            const total = gap + thick;            // Draw Stripes            ctx.fillStyle = "rgba(255, 255, 255, 1.0)";            for (let y = gap; y < sensor.height; y += total) {                ctx.fillRect(0, y, sensor.width, thick);            }            currentImageData = sensor.toDataURL("image/jpeg", 0.9);            openModal(currentImageData);            document.body.classList.add('flash');            setTimeout(() => document.body.classList.remove('flash'), 200);        };        // --- Modal Functions ---        function openModal(imageSrc) {            previewImg.src = imageSrc;            modal.classList.add('active');            aiResultBox.style.display = 'none';            aiBtn.disabled = false;            aiBtnText.innerText = "Analyze Scanimation";            aiLoader.style.display = 'none';        }        function closeModal() {            modal.classList.remove('active');        }        function downloadCurrentPhoto() {            if (!currentImageData) return;            const link = document.createElement('a');            link.href = currentImageData;            link.download = `scanimation_run_${Date.now()}.jpg`;            document.body.appendChild(link);            link.click();            document.body.removeChild(link);            const img = document.createElement('img');            img.src = currentImageData;            img.classList.add('photo-item');            document.getElementById('gallery').prepend(img);            closeModal();        }        // --- ✨ Gemini AI Analysis ---        async function analyzeWithGemini() {            if (!currentImageData) return;            aiBtn.disabled = true;            aiLoader.style.display = 'inline-block';            aiBtnText.innerText = "Analyzing...";            try {                const base64Image = currentImageData.split(',')[1];                const promptText = `                    You are an AI docent for the 'Scanimation Running Spot' project.                    The goal is to help runners discover scanimation spots on the road where different figures with unique running forms and gestures appear to move through the barrier grid (stripes) on their phone screen, conveying the message that "diverse urban figures are running together."                    [Analysis Phase]                    1. Check if there is a visible 'human figure', 'running form', or 'specific gesture' behind the stripes intended as scanimation.                    2. If NO scanimation subject or pattern is detected at all, output ONLY the following sentence and stop:                       "Uh oh, no animation detected!"                    [Feedback Guide (If subject is detected)]                    Provide feedback in ENGLISH incorporating these three values:                    1. **Diversity**: Describe the unique running form or gesture detected, reminding the user that this is one of many neighbors in the city.                    2. **Solidarity**: Convey the message "We are not running alone, but together."                    3. **Connectivity**: Emphasize that this artistic discovery seamlessly connects the daily streetscape with the act of running.                    [Output Format]                    Title: (A creative, energetic title reflecting the figure's characteristics)                    Analysis: (A warm, motivating docent explanation of 2-3 sentences reflecting the guide above)                `;                const response = await fetch(                    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`,                    {                        method: 'POST',                        headers: { 'Content-Type': 'application/json' },                        body: JSON.stringify({                            contents: [{                                parts: [                                    { text: promptText },                                    { inlineData: { mimeType: "image/jpeg", data: base64Image } }                                ]                            }]                        })                    }                );                const data = await response.json();                if (data.candidates && data.candidates[0].content) {                    const text = data.candidates[0].content.parts[0].text.trim();                    if (text.includes("Uh oh, no animation detected")) {                        aiTitle.innerText = "Analysis Failed";                        aiDesc.innerText = "Uh oh, no animation detected!";                    } else {                        const lines = text.split('\n').filter(line => line.trim() !== '');                        let title = "Scanimation Discovered!";                        let desc = text;                        if (lines.length >= 2) {                            title = lines[0].replace(/Title:/i, '').replace(/\*\*/g, '').replace(/\"/g, '').trim();                            desc = lines.slice(1).join(' ').replace(/Analysis:/i, '').replace(/\*\*/g, '').trim();                        }                        aiTitle.innerText = title;                        aiDesc.innerText = desc;                    }                    aiResultBox.style.display = 'block';                    aiBtnText.innerText = "Analysis Complete";                } else {                    throw new Error("No response");                }            } catch (error) {                console.error(error);                aiBtnText.innerText = "Failed (Try Again)";                aiBtn.disabled = false;                alert("An error occurred. Please try again later.");            } finally {                aiLoader.style.display = 'none';            }        }        window.addEventListener("load", startCamera);    </script></body>
+        // ⚠️ 여기에 API 키를 넣어두었습니다.
+        const apiKey = "AIzaSyALODCZDvPePL0Cr8dAddMxlL6i1j6qgUc"; 
+
+
+        const videoView = document.getElementById('camera-view');
+        const overlay = document.getElementById('video-overlay');
+        const slider = document.getElementById('control-slider');
+        const btnGap = document.getElementById('btn-gap');
+        const btnThickness = document.getElementById('btn-thickness');
+        const valueDisplay = document.getElementById('value-display');
+        
+        const modal = document.getElementById('result-modal');
+        const previewImg = document.getElementById('captured-preview');
+        const aiResultBox = document.getElementById('ai-result');
+        const aiTitle = document.getElementById('ai-title');
+        const aiDesc = document.getElementById('ai-desc');
+        const aiLoader = document.getElementById('ai-loader');
+        const aiBtnText = document.getElementById('ai-btn-text');
+        const aiBtn = document.getElementById('ai-analyze-btn');
+
+        let currentImageData = null;
+
+        let state = { gap: 20, thickness: 2, mode: 'gap' };
+        const config = {
+            gap: { min: 0, max: 100, step: 1, label: "Gap" },
+            thickness: { min: 1, max: 50, step: 1, label: "Thickness" }
+        };
+
+        function setMode(mode) {
+            state.mode = mode;
+            if(mode === 'gap') {
+                btnGap.classList.add('active');
+                btnThickness.classList.remove('active');
+            } else {
+                btnGap.classList.remove('active');
+                btnThickness.classList.add('active');
+            }
+            slider.min = config[mode].min;
+            slider.max = config[mode].max;
+            slider.step = config[mode].step;
+            slider.value = state[mode];
+            updateValueDisplay();
+        }
+
+        function updateValueDisplay() {
+            const currentLabel = config[state.mode].label;
+            const currentValue = state[state.mode];
+            valueDisplay.innerText = `${currentLabel}: ${currentValue}px`;
+        }
+
+        function renderOverlay() {
+            const gap = parseInt(state.gap);
+            const thick = parseInt(state.thickness);
+            const totalSize = gap + thick;
+            
+            overlay.style.background = `repeating-linear-gradient(
+                to bottom,
+                transparent 0px,
+                transparent ${gap}px,
+                rgba(255, 255, 255, 1.0) ${gap}px,
+                rgba(255, 255, 255, 1.0) ${totalSize}px
+            )`;
+            updateValueDisplay();
+        }
+
+        slider.addEventListener('input', function(e) {
+            const val = parseInt(e.target.value);
+            state[state.mode] = val;
+            renderOverlay();
+        });
+
+        setMode('gap');
+        renderOverlay();
+
+        const constraints = { 
+            video: { facingMode: "environment", width: { ideal: 1920 }, height: { ideal: 1080 } }, 
+            audio: false 
+        };
+
+        async function startCamera() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia(constraints);
+                videoView.srcObject = stream;
+            } catch (error) {
+                console.log("Camera permission error:", error);
+            }
+        }
+
+        document.getElementById('shutter-btn').onclick = function() {
+            const sensor = document.getElementById('camera-sensor');
+            const ctx = sensor.getContext('2d');
+
+            sensor.width = videoView.videoWidth;
+            sensor.height = videoView.videoHeight;
+            ctx.drawImage(videoView, 0, 0);
+
+            const scaleFactor = sensor.width / videoView.clientWidth;
+            const gap = state.gap * scaleFactor;
+            const thick = state.thickness * scaleFactor;
+            const total = gap + thick;
+
+            ctx.fillStyle = "rgba(255, 255, 255, 1.0)";
+            for (let y = gap; y < sensor.height; y += total) {
+                ctx.fillRect(0, y, sensor.width, thick);
+            }
+
+            currentImageData = sensor.toDataURL("image/jpeg", 0.9);
+            openModal(currentImageData);
+
+            document.body.classList.add('flash');
+            setTimeout(() => document.body.classList.remove('flash'), 200);
+        };
+
+        function openModal(imageSrc) {
+            previewImg.src = imageSrc;
+            modal.classList.add('active');
+            aiResultBox.style.display = 'none';
+            aiBtn.disabled = false;
+            aiBtnText.innerText = "Analyze";
+            aiLoader.style.display = 'none';
+        }
+
+        function closeModal() {
+            modal.classList.remove('active');
+        }
+
+        function downloadCurrentPhoto() {
+            if (!currentImageData) return;
+            const link = document.createElement('a');
+            link.href = currentImageData;
+            link.download = `scanimation_run_${Date.now()}.jpg`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            
+            const img = document.createElement('img');
+            img.src = currentImageData;
+            img.classList.add('photo-item');
+            document.getElementById('gallery').prepend(img);
+            
+            closeModal();
+        }
+
+        async function analyzeWithGemini() {
+            if (!currentImageData) return;
+            if (!apiKey || apiKey.length < 10) {
+                alert("API 키가 설정되지 않았습니다.");
+                return;
+            }
+
+            aiBtn.disabled = true;
+            aiLoader.style.display = 'inline-block';
+            aiBtnText.innerText = "Analyzing...";
+            
+            try {
+                const base64Image = currentImageData.split(',')[1];
+
+                const promptText = `
+                    You are an AI docent for the 'Scanimation Running Spot' project.
+                    [Analysis Phase]
+                    1. Check if there is a visible 'human figure', 'running form', or 'specific gesture' behind the stripes intended as scanimation.
+                    2. If NO scanimation subject or pattern is detected at all, output ONLY the following sentence and stop:
+                       "Uh oh, no animation detected!"
+
+                    [Feedback Guide (If subject is detected)]
+                    Provide feedback in ENGLISH incorporating these three values:
+                    1. **Diversity**: Describe the unique running form or gesture detected.
+                    2. **Solidarity**: Convey the message "We are not running alone, but together."
+                    3. **Connectivity**: Emphasize that this artistic discovery seamlessly connects the daily streetscape with the act of running.
+
+                    [Output Format]
+                    Title: (A creative, energetic title)
+                    Analysis: (A warm, motivating docent explanation of 2-3 sentences)
+                `;
+
+                // ✅ [수정 완료] URL이 'gemini-1.5-flash'로 변경되었습니다.
+                const response = await fetch(
+                    `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey.trim()}`,
+                    {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            contents: [{
+                                parts: [
+                                    { text: promptText },
+                                    { inlineData: { mimeType: "image/jpeg", data: base64Image } }
+                                ]
+                            }]
+                        })
+                    }
+                );
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error?.message || `HTTP Error: ${response.status}`);
+                }
+
+                const data = await response.json();
+                
+                if (data.candidates && data.candidates[0].content) {
+                    const text = data.candidates[0].content.parts[0].text.trim();
+                    
+                    if (text.includes("Uh oh, no animation detected")) {
+                        aiTitle.innerText = "Analysis Failed";
+                        aiDesc.innerText = "Uh oh, no animation detected!";
+                    } else {
+                        const lines = text.split('\n').filter(line => line.trim() !== '');
+                        
+                        let title = "Scanimation Discovered!";
+                        let desc = text;
+
+                        const titleMatch = text.match(/Title:\s*(.*)/i);
+                        const analysisMatch = text.match(/Analysis:\s*([\s\S]*)/i);
+
+                        if (titleMatch) title = titleMatch[1].replace(/\*\*/g, '').trim();
+                        if (analysisMatch) desc = analysisMatch[1].replace(/\*\*/g, '').trim();
+
+                        aiTitle.innerText = title;
+                        aiDesc.innerText = desc;
+                    }
+                    
+                    aiResultBox.style.display = 'block';
+                    aiBtnText.innerText = "Analysis Complete";
+                } else {
+                    throw new Error("No response content");
+                }
+
+            } catch (error) {
+                console.error(error);
+                aiBtnText.innerText = "Failed (Try Again)";
+                aiBtn.disabled = false;
+                alert("AI Error: " + error.message);
+            } finally {
+                aiLoader.style.display = 'none';
+            }
+        }
+
+        window.addEventListener("load", startCamera);
+    </script>
+</body>
+</html>
