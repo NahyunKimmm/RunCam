@@ -6,9 +6,8 @@
     <title>Scanimation Running Cam</title>
     
     <style>
-        /* --- 1. Font Face Definition (폰트 파일 연결) --- */
-        /* 파일명이 정확히 일치해야 합니다. */
-        
+        /* --- 1. Font Face Definition --- */
+        /* 폰트 파일이 같은 폴더에 있어야 작동합니다 */
         @font-face {
             font-family: 'Stack Sans Notch';
             src: url('StackSansNotch-ExtraLight.ttf') format('truetype');
@@ -24,7 +23,7 @@
         @font-face {
             font-family: 'Stack Sans Notch';
             src: url('StackSansNotch-Regular.ttf') format('truetype');
-            font-weight: 400; /* 기본 굵기 */
+            font-weight: 400;
             font-style: normal;
         }
         @font-face {
@@ -57,7 +56,6 @@
             justify-content: center;
             height: 100vh;
             height: 100dvh; 
-            /* ✅ 커스텀 폰트 적용 */
             font-family: "Stack Sans Notch", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             overflow: hidden;
             touch-action: none;
@@ -158,7 +156,7 @@
             color: #aaa;
             padding: 8px clamp(16px, 4vw, 24px);
             font-size: clamp(12px, 3.5vw, 14px);
-            font-weight: 600; /* SemiBold 느낌 */
+            font-weight: 600;
             cursor: pointer;
             border-radius: 24px;
             transition: all 0.2s;
@@ -175,7 +173,7 @@
         .value-display {
             color: white;
             font-size: 13px;
-            font-weight: 500; /* Medium */
+            font-weight: 500;
             opacity: 0.9;
             margin-bottom: -5px;
             text-shadow: 0 1px 2px rgba(0,0,0,0.8);
@@ -327,7 +325,7 @@
             border: none;
             color: #FCFCFC; 
             font-size: 16px;
-            font-weight: 700; /* Bold */
+            font-weight: 700;
             border-radius: 16px;
             cursor: pointer;
             display: flex;
@@ -353,7 +351,7 @@
             border: 1px solid rgba(255,255,255,0.1);
             color: #ddd;
             font-size: 14px;
-            font-weight: 500; /* Medium */
+            font-weight: 500;
             border-radius: 14px;
             cursor: pointer;
             text-align: center;
@@ -431,7 +429,8 @@
 
     <!-- Top Logo Section -->
     <div class="top-logo-container">
-        <img src="심볼.png" alt="Runner Station Logo" class="app-logo-img" onerror="this.style.display='none'; console.log('Logo not found. Ensure 심볼.png is in the same folder.');">
+        <!-- ⚠️ 로고 파일명 확인: 심볼.png -->
+        <img src="심볼.png" alt="Runner Station Logo" class="app-logo-img" onerror="this.style.display='none';">
     </div>
 
     <div id="camera-container">
@@ -445,22 +444,18 @@
     <!-- Controls Wrapper -->
     <div class="controls-wrapper">
         <div class="controls-inner">
-            <!-- Value Display -->
             <div class="value-display" id="value-display">Gap: 20px</div>
 
-            <!-- Toggle Container -->
             <div class="toggle-container">
                 <button class="toggle-btn active" id="btn-gap" onclick="setMode('gap')">Gap</button>
                 <button class="toggle-btn" id="btn-thickness" onclick="setMode('thickness')">Thickness</button>
             </div>
 
-            <!-- Slider Container -->
             <div class="slider-container">
                 <input type="range" id="control-slider">
             </div>
         </div>
         
-        <!-- Shutter Button (Outside inner to stay big) -->
         <button id="shutter-btn"></button>
     </div>
 
@@ -473,7 +468,8 @@
             <div class="modal-body">
                 <button class="ai-btn" id="ai-analyze-btn" onclick="analyzeWithGemini()">
                     <span class="loader" id="ai-loader"></span>
-                    <span id="ai-btn-text">Analyze Scanimation</span>
+                    <!-- Changed button text here -->
+                    <span id="ai-btn-text">Analyze</span>
                 </button>
                 
                 <div class="ai-result-box" id="ai-result">
@@ -491,9 +487,9 @@
 
     <script>
         // --- Gemini API Setup ---
-        const apiKey = "AIzaSyCsl1bHBeFUsa7SDAMr8-H3NO2iqZUFJcg"; // ⚠️ 여기에 다시 API 키를 꼭 넣어주세요!
+        // ⚠️ 여기에 새로 발급받은 API 키를 넣어주세요
+        const apiKey = "AIzaSyALODCZDvPePL0Cr8dAddMxlL6i1j6qgUc"; 
 
-        // --- Variables ---
         const videoView = document.getElementById('camera-view');
         const overlay = document.getElementById('video-overlay');
         const slider = document.getElementById('control-slider');
@@ -501,7 +497,6 @@
         const btnThickness = document.getElementById('btn-thickness');
         const valueDisplay = document.getElementById('value-display');
         
-        // --- Modal Variables ---
         const modal = document.getElementById('result-modal');
         const previewImg = document.getElementById('captured-preview');
         const aiResultBox = document.getElementById('ai-result');
@@ -513,13 +508,7 @@
 
         let currentImageData = null;
 
-        // --- State ---
-        let state = {
-            gap: 20,
-            thickness: 2,
-            mode: 'gap'
-        };
-
+        let state = { gap: 20, thickness: 2, mode: 'gap' };
         const config = {
             gap: { min: 0, max: 100, step: 1, label: "Gap" },
             thickness: { min: 1, max: 50, step: 1, label: "Thickness" }
@@ -547,7 +536,6 @@
             valueDisplay.innerText = `${currentLabel}: ${currentValue}px`;
         }
 
-        // --- Overlay Rendering ---
         function renderOverlay() {
             const gap = parseInt(state.gap);
             const thick = parseInt(state.thickness);
@@ -572,7 +560,6 @@
         setMode('gap');
         renderOverlay();
 
-        // --- Camera Setup ---
         const constraints = { 
             video: { facingMode: "environment", width: { ideal: 1920 }, height: { ideal: 1080 } }, 
             audio: false 
@@ -587,7 +574,6 @@
             }
         }
 
-        // --- Capture ---
         document.getElementById('shutter-btn').onclick = function() {
             const sensor = document.getElementById('camera-sensor');
             const ctx = sensor.getContext('2d');
@@ -601,7 +587,6 @@
             const thick = state.thickness * scaleFactor;
             const total = gap + thick;
 
-            // Draw Stripes
             ctx.fillStyle = "rgba(255, 255, 255, 1.0)";
             for (let y = gap; y < sensor.height; y += total) {
                 ctx.fillRect(0, y, sensor.width, thick);
@@ -614,13 +599,13 @@
             setTimeout(() => document.body.classList.remove('flash'), 200);
         };
 
-        // --- Modal Functions ---
         function openModal(imageSrc) {
             previewImg.src = imageSrc;
             modal.classList.add('active');
             aiResultBox.style.display = 'none';
             aiBtn.disabled = false;
-            aiBtnText.innerText = "Analyze Scanimation";
+            // Changed reset text here
+            aiBtnText.innerText = "Analyze";
             aiLoader.style.display = 'none';
         }
 
@@ -645,9 +630,12 @@
             closeModal();
         }
 
-        // --- ✨ Gemini AI Analysis ---
         async function analyzeWithGemini() {
             if (!currentImageData) return;
+            if (!apiKey || apiKey.length < 10) {
+                alert("API 키가 설정되지 않았습니다. 코드를 확인해주세요.");
+                return;
+            }
 
             aiBtn.disabled = true;
             aiLoader.style.display = 'inline-block';
@@ -658,8 +646,6 @@
 
                 const promptText = `
                     You are an AI docent for the 'Scanimation Running Spot' project.
-                    The goal is to help runners discover scanimation spots on the road where different figures with unique running forms and gestures appear to move through the barrier grid (stripes) on their phone screen, conveying the message that "diverse urban figures are running together."
-
                     [Analysis Phase]
                     1. Check if there is a visible 'human figure', 'running form', or 'specific gesture' behind the stripes intended as scanimation.
                     2. If NO scanimation subject or pattern is detected at all, output ONLY the following sentence and stop:
@@ -667,17 +653,18 @@
 
                     [Feedback Guide (If subject is detected)]
                     Provide feedback in ENGLISH incorporating these three values:
-                    1. **Diversity**: Describe the unique running form or gesture detected, reminding the user that this is one of many neighbors in the city.
+                    1. **Diversity**: Describe the unique running form or gesture detected.
                     2. **Solidarity**: Convey the message "We are not running alone, but together."
                     3. **Connectivity**: Emphasize that this artistic discovery seamlessly connects the daily streetscape with the act of running.
 
                     [Output Format]
-                    Title: (A creative, energetic title reflecting the figure's characteristics)
-                    Analysis: (A warm, motivating docent explanation of 2-3 sentences reflecting the guide above)
+                    Title: (A creative, energetic title)
+                    Analysis: (A warm, motivating docent explanation of 2-3 sentences)
                 `;
 
+                // 모델을 gemini-1.5-flash로 변경 (안정성)
                 const response = await fetch(
-                    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`,
+                    `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
                     {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
@@ -694,6 +681,11 @@
 
                 const data = await response.json();
                 
+                // 에러 처리 (API Key 문제 등)
+                if (data.error) {
+                    throw new Error(data.error.message);
+                }
+
                 if (data.candidates && data.candidates[0].content) {
                     const text = data.candidates[0].content.parts[0].text.trim();
                     
@@ -706,10 +698,12 @@
                         let title = "Scanimation Discovered!";
                         let desc = text;
 
-                        if (lines.length >= 2) {
-                            title = lines[0].replace(/Title:/i, '').replace(/\*\*/g, '').replace(/\"/g, '').trim();
-                            desc = lines.slice(1).join(' ').replace(/Analysis:/i, '').replace(/\*\*/g, '').trim();
-                        }
+                        // 타이틀/내용 파싱 시도
+                        const titleMatch = text.match(/Title:\s*(.*)/i);
+                        const analysisMatch = text.match(/Analysis:\s*([\s\S]*)/i);
+
+                        if (titleMatch) title = titleMatch[1].replace(/\*\*/g, '').trim();
+                        if (analysisMatch) desc = analysisMatch[1].replace(/\*\*/g, '').trim();
 
                         aiTitle.innerText = title;
                         aiDesc.innerText = desc;
@@ -725,7 +719,8 @@
                 console.error(error);
                 aiBtnText.innerText = "Failed (Try Again)";
                 aiBtn.disabled = false;
-                alert("An error occurred. Please try again later.");
+                // 구체적인 에러 내용을 알림창으로 띄움
+                alert("AI Error: " + error.message);
             } finally {
                 aiLoader.style.display = 'none';
             }
